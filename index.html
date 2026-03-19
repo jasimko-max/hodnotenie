@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generátor slovných hodnotení – ZŠ s MŠ Višňové 446</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F0F4FF; font-family: Arial, sans-serif; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .card { animation: fadeIn .3s ease; }
+    select:focus, input:focus, textarea:focus {
+      border-color: #1565C0 !important;
+      box-shadow: 0 0 0 3px #E3F2FD;
+      outline: none;
+    }
+    select, input, textarea { outline: none; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    @media (max-width: 700px) {
+      .main-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    // ─────────────────────────────────────────────
+    //  ⚠️  SEM VLOŽ URL SVOJHO CLOUDFLARE WORKERA
+    //  napr. "https://hodnotenia.tvoje-meno.workers.dev"
+    // ─────────────────────────────────────────────
+    const WORKER_URL = "https://hodnotenie.jasimko.workers.dev";
+
+    const C = {
+      blue:"#1565C0", blueDark:"#0D47A1", blueLight:"#E3F2FD", blueMid:"#BBDEFB",
+      orange:"#F57C00", orangeLight:"#FFF3E0", orangeMid:"#FFE0B2", orangeAcc:"#FF9800",
+      white:"#FFFFFF", bg:"#F0F4FF", textLight:"#546E7A", border:"#90CAF9",
+    };
+
+    const predmety = [
+      "Slovenský jazyk a literatúra","Matematika","Prírodoveda","Vlastiveda",
+      "Anglický jazyk","Nemecký jazyk","Informatika","Hudobná výchova",
+      "Výtvarná výchova","Telesná a športová výchova","Etická výchova",
+      "Náboženská výchova","Pracovné vyučovanie","Technická výchova",
+      "Fyzika","Chémia","Biológia","Dejepis","Geografia","Občianska náuka",
+    ];
+    const rocniky = ["1. ročník","2. ročník","3. ročník","4. ročník","5. ročník",
+                     "6. ročník","7. ročník","8. ročník","9. ročník"];
+    const hodnotenia = [
+      { label:"Výborný (1)",      value:"výborný",      color:"#2E7D32", bg:"#E8F5E9" },
+      { label:"Chválitebný (2)",  value:"chválitebný",  color:"#1565C0", bg:"#E3F2FD" },
+      { label:"Dobrý (3)",        value:"dobrý",        color:"#F57F17", bg:"#FFFDE7" },
+      { label:"Dostatočný (4)",   value:"dostatočný",   color:"#E65100", bg:"#FFF3E0" },
+      { label:"Nedostatočný (5)", value:"nedostatočný", color:"#B71C1C", bg:"#FFEBEE" },
+    ];
+    const typy = [
+      { label:"📄 Vysvedčenie",       value:"vysvedčenie" },
+      { label:"👪 Správa pre rodiča", value:"správa pre rodiča" },
+      { label:"📁 Ped. dokumentácia", value:"pedagogická dokumentácia" },
+    ];
+    const pohlavie = [
+      { label:"👧 Dievča", value:"dievča" },
+      { label:"👦 Chlapec", value:"chlapec" },
+    ];
+
+    function App() {
+      const [form, setForm] = useState({
+        meno:"", pohlavie:"dievča",
+        predmet:"Slovenský jazyk a literatúra",
+        rocnik:"1. ročník", hodnotenie:"výborný",
+        typ:"vysvedčenie", poznamka:"", pocet:1, kratsi:false,
+      });
+      const [loading, setLoading]     = useState(false);
+      const [result, setResult]       = useState("");
+      const [copiedIdx, setCopiedIdx] = useState(null);
+      const [error, setError]         = useState("");
+      const [recording, setRecording] = useState(false);
+      const [micMsg, setMicMsg]       = useState("");
+      const recRef    = useRef(null);
+      const activeRef = useRef(false);
+
+      const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "function" ? v(f[k]) : v }));
+
+      /* ── HLASOVÝ VSTUP ── */
+      const toggleRecording = () => {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { setMicMsg("⚠ Prehliadač nepodporuje hlasový vstup. Použite Chrome."); return; }
+
+        if (activeRef.current) {
+          activeRef.current = false;
+          setRecording(false);
+          setMicMsg("");
+          if (recRef.current) { recRef.current.onend = null; recRef.current.abort(); recRef.current = null; }
+          return;
+        }
+
+        activeRef.current = true;
+        setRecording(true);
+        setMicMsg("🎙 Počúvam...");
+
+        const spusti = () => {
+          if (!activeRef.current) return;
+          const r = new SR();
+          r.lang = "sk-SK";
+          r.continuous = false;
+          r.interimResults = false;
+          r.maxAlternatives = 1;
+
+          r.onstart = () => setMicMsg("🎙 Počúvam...");
+          r.onresult = (e) => {
+            const t = e.results[0]?.[0]?.transcript;
+            if (t) {
+              setForm(f => ({ ...f, poznamka: f.poznamka ? f.poznamka + " " + t : t }));
+              setMicMsg("✅ Zapísané, pokračujte...");
+            }
+          };
+          r.onerror = (e) => {
+            if (e.error === "not-allowed") {
+              setMicMsg("⚠ Povoľte mikrofón v prehliadači (ikona 🔒 v adresnom riadku).");
+              activeRef.current = false; setRecording(false);
+            } else if (e.error === "no-speech") {
+              setMicMsg("🎙 Nič som nepočul, skúste znova...");
+            }
+          };
+          r.onend = () => { if (activeRef.current) setTimeout(spusti, 250); };
+
+          recRef.current = r;
+          try { r.start(); }
+          catch(err) { setMicMsg("⚠ Chyba: " + err.message); activeRef.current = false; setRecording(false); }
+        };
+        spusti();
+      };
+
+      /* ── GENEROVANIE ── */
+      const generovatHodnotenie = async () => {
+        if (!form.meno.trim()) { setError("Zadaj meno žiaka/žiačky."); return; }
+        setError(""); setLoading(true); setResult("");
+
+        const pocetText = form.pocet === 1 ? "jedno hodnotenie" : `${form.pocet} rôzne varianty hodnotení`;
+        const prompt = `Si skúsený slovenský učiteľ na základnej škole. Napíš ${pocetText} do ${form.typ} pre žiaka/žiačku.
+
+Údaje:
+- Meno: ${form.meno}
+- Pohlavie: ${form.pohlavie}
+- Predmet: ${form.predmet}
+- Ročník: ${form.rocnik}
+- Prospech: ${form.hodnotenie}
+${form.poznamka ? `- Doplňujúce poznámky učiteľa: ${form.poznamka}` : ""}
+
+Požiadavky:
+- Hodnotenie musí byť v slovenčine, formálne, ale ľudsky napísané
+- Prispôsob jazyk a náročnosť ${form.rocnik}u
+- Zohľadni pohlavie žiaka pri skloňovaní a tvaroch slov
+- Hodnotenie má byť ${form.kratsi ? "2–3 vety, stručné a výstižné (kratší variant)" : "3–5 viet, výstižné a konštruktívne"}
+- Nepoužívaj klišé ako "je snaživý/á žiak/žiačka"
+- Prospech "${form.hodnotenie}" musí byť zrejmý z tónu hodnotenia
+${form.pocet > 1 ? `- Napíš presne ${form.pocet} varianty, každý oddeľ nadpisom "Variant 1:", "Variant 2:" atď.` : ""}
+
+Napíš IBA text hodnotenia, bez úvodu ani vysvetlení.`;
+
+        try {
+          const res = await fetch(WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 1000,
+              messages: [{ role: "user", content: prompt }]
+            })
+          });
+          const data = await res.json();
+          if (data.error) { setError("Chyba API: " + data.error.message); setLoading(false); return; }
+          const raw = data.content?.map(b => b.text || "").join("") || "";
+          setResult(raw.replace(/\*\*/g,"").replace(/\*/g,"").trim());
+        } catch(e) {
+          setError("Chyba pri generovaní. Skontroluj URL Workera v kóde.");
+        }
+        setLoading(false);
+      };
+
+      /* ── KOPÍROVANIE ── */
+      const kopirovat = (text, idx) => {
+        const el = document.createElement("textarea");
+        el.value = text; el.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+        document.body.appendChild(el); el.focus(); el.select();
+        document.execCommand("copy"); document.body.removeChild(el);
+        setCopiedIdx(idx); setTimeout(() => setCopiedIdx(null), 2000);
+      };
+
+      const parseVariants = (text) => {
+        const parts = text.split(/(?=Variant\s+\d+:)/i).map(s => s.trim()).filter(Boolean);
+        if (parts.length <= 1) return [{ label:null, text:text.trim() }];
+        return parts.map(p => {
+          const m = p.match(/^(Variant\s+\d+:)\s*/i);
+          return m ? { label:m[1], text:p.slice(m[0].length).trim() } : { label:null, text:p.trim() };
+        });
+      };
+
+      const hObj = hodnotenia.find(h => h.value === form.hodnotenie) || hodnotenia[0];
+      const variants = result ? parseVariants(result) : [];
+
+      return (
+        <div style={{ minHeight:"100vh", background:C.bg }}>
+
+          {/* HEADER */}
+          <div style={{ background:`linear-gradient(135deg,${C.blueDark},${C.blue} 60%,#1976D2)`, color:C.white, padding:"22px 36px", borderBottom:`5px solid ${C.orangeAcc}`, display:"flex", alignItems:"center", gap:18, boxShadow:"0 4px 20px rgba(13,71,161,0.4)" }}>
+            <div style={{ background:C.orangeAcc, borderRadius:14, width:52, height:52, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0, boxShadow:"0 3px 12px rgba(255,152,0,0.5)" }}>📝</div>
+            <div>
+              <div style={{ fontSize:21, fontWeight:800 }}>Generátor slovných hodnotení</div>
+              <div style={{ fontSize:12, color:C.orangeMid, marginTop:3 }}>ZŠ s MŠ, Višňové 446 · na báze umelej inteligencie</div>
+            </div>
+            <div style={{ marginLeft:"auto" }}>
+              <div style={{ background:"rgba(255,255,255,0.15)", borderRadius:8, padding:"5px 14px", fontSize:12, color:"#BBDEFB" }}>🤖 Claude AI</div>
+            </div>
+          </div>
+
+          {/* GRID */}
+          <div className="main-grid" style={{ maxWidth:940, margin:"22px auto", padding:"0 18px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+
+            {/* ── ĽAVÝ PANEL ── */}
+            <div className="card" style={{ background:C.white, borderRadius:18, boxShadow:"0 6px 30px rgba(21,101,192,0.13)", border:`1.5px solid ${C.blueMid}`, overflow:"hidden" }}>
+              <div style={{ background:`linear-gradient(90deg,${C.blue},#1976D2)`, padding:"13px 22px", color:C.white, display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:17 }}>🎓</span>
+                <span style={{ fontWeight:700, fontSize:14 }}>Údaje o žiakovi</span>
+              </div>
+              <div style={{ padding:"20px 22px" }}>
+
+                <Lbl color={C.blue}>Meno a priezvisko</Lbl>
+                <input value={form.meno} onChange={e => set("meno", e.target.value)}
+                  placeholder="napr. Jana Nováková"
+                  style={{ ...iS, border:`1.5px solid ${C.border}` }} />
+
+                <Lbl color={C.blue}>Pohlavie</Lbl>
+                <div style={{ display:"flex", gap:10, marginBottom:15 }}>
+                  {pohlavie.map(p => (
+                    <button key={p.value} onClick={() => set("pohlavie", p.value)} style={{ flex:1, padding:"9px 0", border:"none", borderRadius:10, cursor:"pointer", fontWeight:700, fontSize:13, transition:"all .15s", background:form.pohlavie===p.value?`linear-gradient(135deg,${C.blue},#1976D2)`:C.blueLight, color:form.pohlavie===p.value?C.white:C.blue, boxShadow:form.pohlavie===p.value?"0 3px 10px rgba(21,101,192,0.35)":"none" }}>{p.label}</button>
+                  ))}
+                </div>
+
+                <Lbl color={C.blue}>Predmet</Lbl>
+                <select value={form.predmet} onChange={e => set("predmet", e.target.value)} style={{ ...iS, border:`1.5px solid ${C.border}` }}>
+                  {predmety.map(p => <option key={p}>{p}</option>)}
+                </select>
+
+                <Lbl color={C.blue}>Ročník</Lbl>
+                <select value={form.rocnik} onChange={e => set("rocnik", e.target.value)} style={{ ...iS, border:`1.5px solid ${C.border}` }}>
+                  {rocniky.map(r => <option key={r}>{r}</option>)}
+                </select>
+
+                <Lbl color={C.blue}>Prospech</Lbl>
+                <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:15 }}>
+                  {hodnotenia.map(h => (
+                    <button key={h.value} onClick={() => set("hodnotenie", h.value)} style={{ border:`2px solid ${form.hodnotenie===h.value?h.color:"#E0E0E0"}`, borderRadius:9, padding:"7px 13px", cursor:"pointer", textAlign:"left", transition:"all .15s", background:form.hodnotenie===h.value?h.bg:C.white, color:form.hodnotenie===h.value?h.color:"#555", fontWeight:form.hodnotenie===h.value?700:400, fontSize:13, boxShadow:form.hodnotenie===h.value?`0 2px 8px ${h.color}33`:"none" }}>{h.label}</button>
+                  ))}
+                </div>
+
+                <Lbl color={C.orange}>Typ dokumentu</Lbl>
+                <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginBottom:15 }}>
+                  {typy.map(t => (
+                    <button key={t.value} onClick={() => set("typ", t.value)} style={{ padding:"7px 12px", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:700, transition:"all .15s", background:form.typ===t.value?`linear-gradient(135deg,${C.orange},${C.orangeAcc})`:C.orangeLight, color:form.typ===t.value?C.white:C.orange, boxShadow:form.typ===t.value?"0 3px 10px rgba(245,124,0,0.35)":"none" }}>{t.label}</button>
+                  ))}
+                </div>
+
+                <Lbl color={C.orange}>Počet variantov</Lbl>
+                <div style={{ display:"flex", gap:10, marginBottom:15 }}>
+                  {[1,2,3].map(n => (
+                    <button key={n} onClick={() => set("pocet", n)} style={{ width:50, height:40, border:"none", borderRadius:9, cursor:"pointer", fontWeight:800, fontSize:15, transition:"all .15s", background:form.pocet===n?`linear-gradient(135deg,${C.orange},${C.orangeAcc})`:C.orangeLight, color:form.pocet===n?C.white:C.orange, boxShadow:form.pocet===n?"0 3px 10px rgba(245,124,0,0.35)":"none" }}>{n}×</button>
+                  ))}
+                </div>
+
+                {/* POZNÁMKY + MIKROFÓN */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+                  <Lbl color={C.textLight}>Poznámky pre AI (nepovinné)</Lbl>
+                  <button onClick={toggleRecording} style={{ padding:"6px 14px", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:700, transition:"all .2s", background:recording?`linear-gradient(135deg,#C62828,#D32F2F)`:`linear-gradient(135deg,${C.blue},#1976D2)`, color:C.white, display:"flex", alignItems:"center", gap:6, marginBottom:7, boxShadow:recording?"0 3px 10px rgba(198,40,40,0.4)":"0 3px 10px rgba(21,101,192,0.35)" }}>
+                    <span style={{ width:8, height:8, borderRadius:"50%", background:recording?"#fff":C.orangeAcc, display:"inline-block", animation:recording?"blink 1s infinite":"none" }}/>
+                    {recording ? "⏹ Zastaviť" : "🎙 Nahrať hlas"}
+                  </button>
+                </div>
+                <textarea value={form.poznamka} onChange={e => set("poznamka", e.target.value)}
+                  placeholder="napr. žiak má problémy so sústredením, ale výrazne sa zlepšil... alebo kliknite 🎙"
+                  rows={3} style={{ ...iS, border:`1.5px solid ${C.border}`, resize:"vertical", lineHeight:1.5 }} />
+                {micMsg && (
+                  <div style={{ fontSize:12, marginTop:-10, marginBottom:12, padding:"6px 10px", borderRadius:7, color:micMsg.startsWith("⚠")?"#C62828":micMsg.startsWith("✅")?"#2E7D32":C.blue, background:micMsg.startsWith("⚠")?"#FFEBEE":micMsg.startsWith("✅")?"#E8F5E9":C.blueLight }}>
+                    {micMsg}
+                  </div>
+                )}
+
+                {/* KRATŠÍ TEXT */}
+                <label onClick={() => set("kratsi", !form.kratsi)} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18, cursor:"pointer", userSelect:"none", background:form.kratsi?C.orangeLight:"#FAFAFA", border:`2px solid ${form.kratsi?C.orangeAcc:"#E0E0E0"}`, borderRadius:11, padding:"10px 14px", transition:"all .2s" }}>
+                  <div style={{ width:22, height:22, borderRadius:6, flexShrink:0, border:`2px solid ${form.kratsi?C.orange:"#BDBDBD"}`, background:form.kratsi?C.orange:C.white, display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
+                    {form.kratsi && <span style={{ color:C.white, fontSize:14, fontWeight:900, lineHeight:1 }}>✓</span>}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:14, color:form.kratsi?C.orange:"#444" }}>✂️ Kratší text</div>
+                    <div style={{ fontSize:11, color:C.textLight }}>o tretinu kratší · 2–3 vety</div>
+                  </div>
+                </label>
+
+                {error && <div style={{ color:"#C62828", fontSize:13, marginBottom:12, padding:"8px 12px", background:"#FFEBEE", borderRadius:8, border:"1px solid #FFCDD2" }}>⚠ {error}</div>}
+
+                <button onClick={generovatHodnotenie} disabled={loading} style={{ width:"100%", padding:"14px", border:"none", borderRadius:12, fontSize:15, fontWeight:800, cursor:loading?"not-allowed":"pointer", transition:"all .2s", background:loading?"#BDBDBD":`linear-gradient(135deg,${C.orange},#E65100)`, color:C.white, boxShadow:loading?"none":"0 4px 16px rgba(230,81,0,0.4)" }}>
+                  {loading ? "⏳ Generujem..." : "✨ Vygenerovať hodnotenie"}
+                </button>
+              </div>
+            </div>
+
+            {/* ── PRAVÝ PANEL ── */}
+            <div className="card" style={{ background:C.white, borderRadius:18, boxShadow:"0 6px 30px rgba(21,101,192,0.13)", border:`1.5px solid ${C.blueMid}`, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+              <div style={{ background:`linear-gradient(90deg,${C.orange},${C.orangeAcc})`, padding:"13px 22px", color:C.white, display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:17 }}>💬</span>
+                <span style={{ fontWeight:700, fontSize:14 }}>Vygenerované hodnotenie</span>
+              </div>
+              <div style={{ padding:"20px 22px", flex:1, display:"flex", flexDirection:"column" }}>
+
+                {!result && !loading && (
+                  <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", gap:14, color:C.textLight }}>
+                    <div style={{ width:76, height:76, borderRadius:"50%", background:`linear-gradient(135deg,${C.blueLight},${C.orangeLight})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:38, boxShadow:"0 4px 16px rgba(21,101,192,0.15)" }}>🎓</div>
+                    <div style={{ fontSize:14, lineHeight:1.7 }}>Vyplň údaje vľavo<br/>a klikni na <strong style={{ color:C.orange }}>"Vygenerovať hodnotenie"</strong></div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:18 }}>
+                    <div style={{ width:58, height:58, borderRadius:"50%", border:`5px solid ${C.blueLight}`, borderTop:`5px solid ${C.blue}`, animation:"spin 0.9s linear infinite" }}/>
+                    <div style={{ color:C.blue, fontWeight:700, fontSize:14 }}>AI píše hodnotenie...</div>
+                  </div>
+                )}
+
+                {result && !loading && (
+                  <div style={{ flex:1, display:"flex", flexDirection:"column", gap:13 }}>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:hObj.bg, border:`1.5px solid ${hObj.color}`, borderRadius:10, padding:"6px 13px", alignSelf:"flex-start" }}>
+                      <span style={{ width:9, height:9, borderRadius:"50%", background:hObj.color, display:"inline-block", flexShrink:0 }}/>
+                      <span style={{ fontSize:12, color:hObj.color, fontWeight:700 }}>{form.meno} · {form.predmet} · {hObj.label}</span>
+                    </div>
+
+                    <div style={{ display:"flex", flexDirection:"column", gap:11, flex:1 }}>
+                      {variants.map((v, idx) => (
+                        <div key={idx} style={{ borderRadius:12, overflow:"hidden", border:`1.5px solid ${C.blueMid}`, boxShadow:"0 2px 10px rgba(21,101,192,0.08)" }}>
+                          {v.label && (
+                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 15px", background:`linear-gradient(90deg,${C.blueLight},#E8F4FD)`, borderBottom:`1.5px solid ${C.blueMid}` }}>
+                              <span style={{ fontSize:13, fontWeight:800, color:C.blue }}>{v.label}</span>
+                              <button onClick={() => kopirovat(v.text, idx)} style={{ background:copiedIdx===idx?"linear-gradient(135deg,#2E7D32,#388E3C)":`linear-gradient(135deg,${C.orange},${C.orangeAcc})`, color:C.white, border:"none", borderRadius:7, padding:"5px 13px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all .2s", boxShadow:"0 2px 8px rgba(245,124,0,0.3)" }}>
+                                {copiedIdx===idx ? "✓ Skopírované!" : "📋 Kopírovať"}
+                              </button>
+                            </div>
+                          )}
+                          <div style={{ padding:"15px 17px", fontSize:14, lineHeight:1.85, color:"#263238", background:C.white, whiteSpace:"pre-wrap" }}>{v.text}</div>
+                          {!v.label && (
+                            <div style={{ padding:"0 15px 13px" }}>
+                              <button onClick={() => kopirovat(v.text, idx)} style={{ width:"100%", padding:"9px", background:copiedIdx===idx?"linear-gradient(135deg,#2E7D32,#388E3C)":`linear-gradient(135deg,${C.orange},${C.orangeAcc})`, color:C.white, border:"none", borderRadius:9, cursor:"pointer", fontSize:13, fontWeight:700, transition:"all .2s", boxShadow:"0 3px 10px rgba(245,124,0,0.3)" }}>
+                                {copiedIdx===idx ? "✓ Skopírované!" : "📋 Kopírovať text"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={generovatHodnotenie} style={{ width:"100%", padding:"10px", background:`linear-gradient(135deg,${C.blueLight},${C.blueMid})`, color:C.blue, border:`1.5px solid ${C.border}`, borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:700, transition:"all .2s" }}>
+                      🔄 Znovu generovať
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ textAlign:"center", padding:"14px 20px", background:C.blueDark, color:C.blueMid, fontSize:12, borderTop:`3px solid ${C.orangeAcc}`, marginTop:10 }}>
+            ZŠ s MŠ, Višňové 446 · Generátor slovných hodnotení · Powered by Claude AI
+          </div>
+        </div>
+      );
+    }
+
+    function Lbl({ children, color }) {
+      return <div style={{ fontSize:11, fontWeight:800, color:color||"#666", textTransform:"uppercase", letterSpacing:0.9, marginBottom:7 }}>{children}</div>;
+    }
+
+    const iS = {
+      width:"100%", padding:"10px 12px", borderRadius:9, fontSize:13,
+      fontFamily:"Arial, sans-serif", background:"#FAFAFA", color:"#222",
+      marginBottom:15, boxSizing:"border-box", border:"1.5px solid #E0E0E0",
+    };
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
