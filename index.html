@@ -74,7 +74,7 @@ function App() {
     meno:"", pohlavie:"dievča",
     predmet:"Slovenský jazyk a literatúra",
     rocnik:"1. ročník", hodnotenie:"výborný",
-    typ:"vysvedčenie", poznamka:"", pocet:1, dlzka:"primerany",
+    typ:"vysvedčenie", poznamka:"", pocet:1, dlzka:"primerany", ucitel:"učiteľka",
   });
   const [loading, setLoading]     = useState(false);
   const [result, setResult]       = useState("");
@@ -115,6 +115,7 @@ Požiadavky:
 - Hodnotenie má byť ${dlzkaPrompt()}
 - Nepoužívaj klišé ako "je snaživý/á žiak/žiačka"
 - Prospech "${form.hodnotenie}" musí byť zrejmý z tónu hodnotenia
+- Hodnotenie píše ${form.ucitel === "učiteľka" ? "učiteľka (používaj ženský rod: zaznamenala som, oceňujem, rada by som odporučila, potešila ma...)" : "učiteľ (používaj mužský rod: zaznamenal som, oceňujem, rád by som odporučil, potešil ma...)"}
 - Časovanie: činnosti a výkony žiaka popisuj v MINULOM čase (napr. "zvládol", "preukázal", "pracoval", "zapájal sa"), ale hodnotenie a postoj učiteľa vyjadruj v PRÍTOMNOM čase (napr. "oceňujem", "teší ma", "odporúčam", "verím")
 ${form.pocet > 1 ? `- Napíš presne ${form.pocet} varianty, každý oddeľ nadpisom "Variant 1:", "Variant 2:" atď.` : ""}
 
@@ -220,6 +221,24 @@ Napíš IBA text hodnotenia, bez úvodu ani vysvetlení.`;
                 const inactiveColor = isDievca ? C.orange : C.blue;
                 return (
                   <button key={p.value} onClick={() => set("pohlavie", p.value)} style={{ flex:1, padding:"9px 0", border:"none", borderRadius:10, cursor:"pointer", fontWeight:700, fontSize:13, transition:"all .15s", background:isActive?activeBg:inactiveBg, color:isActive?C.white:inactiveColor, boxShadow:isActive?`0 3px 10px rgba(0,0,0,0.2)`:"none" }}>{p.label}</button>
+                );
+              })}
+            </div>
+
+            <Lbl color={C.blue}>Vyučujúci (hodnotiteľ)</Lbl>
+            <div style={{ display:"flex", gap:10, marginBottom:15 }}>
+              {[
+                { label:"👩‍🏫 Učiteľka", value:"učiteľka", isDievca:true },
+                { label:"👨‍🏫 Učiteľ",   value:"učiteľ",   isDievca:false },
+              ].map(u => {
+                const isActive = form.ucitel === u.value;
+                const activeBg = u.isDievca
+                  ? `linear-gradient(135deg,${C.orange},#E65100)`
+                  : `linear-gradient(135deg,${C.blue},#1976D2)`;
+                const inactiveBg    = u.isDievca ? C.orangeLight : C.blueLight;
+                const inactiveColor = u.isDievca ? C.orange : C.blue;
+                return (
+                  <button key={u.value} onClick={() => set("ucitel", u.value)} style={{ flex:1, padding:"9px 0", border:"none", borderRadius:10, cursor:"pointer", fontWeight:700, fontSize:13, transition:"all .15s", background:isActive?activeBg:inactiveBg, color:isActive?C.white:inactiveColor, boxShadow:isActive?"0 3px 10px rgba(0,0,0,0.2)":"none" }}>{u.label}</button>
                 );
               })}
             </div>
