@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ŠJ Signál – ZŠ s MŠ Višňové</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --accent-sj: #f59e0b;
+    --accent-zs: #22d3ee;
+    --danger: #ef4444;
+    --success: #10b981;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; min-height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ── SETUP SCREEN ── */
+  #screen-setup {
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    gap: 20px;
+  }
+  .setup-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-sj);
+    text-align: center;
+    line-height: 1;
+  }
+  .setup-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: -12px;
+  }
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .setup-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+    display: block;
+    font-weight: 500;
+  }
+  input[type="text"], input[type="password"], textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent-sj); }
+  .btn-primary {
+    background: var(--accent-sj);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.08em;
+    padding: 16px;
+    width: 100%;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-primary:active { transform: scale(0.97); opacity: 0.85; }
+  .err-msg {
+    color: var(--danger);
+    font-size: 0.82rem;
+    text-align: center;
+    min-height: 20px;
+  }
+
+  /* ── ROLE SCREEN ── */
+  #screen-role {
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    gap: 20px;
+  }
+  .role-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+  .role-subtitle { color: var(--muted); font-size: 0.9rem; text-align: center; }
+  .role-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 380px;
+  }
+  .role-card {
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .role-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+  }
+  .role-card:active { transform: scale(0.97); }
+  .role-card.sj {
+    background: color-mix(in srgb, var(--accent-sj) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--accent-sj) 40%, transparent);
+  }
+  .role-card.zs {
+    background: color-mix(in srgb, var(--accent-zs) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--accent-zs) 40%, transparent);
+  }
+  .role-icon { font-size: 2.2rem; }
+  .role-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+  }
+  .role-card.sj .role-name { color: var(--accent-sj); }
+  .role-card.zs .role-name { color: var(--accent-zs); }
+  .role-desc { color: var(--muted); font-size: 0.85rem; }
+
+  /* ── ŠJ SCREEN ── */
+  #screen-sj {
+    padding: 0;
+    flex-direction: column;
+  }
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .app-header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.06em;
+  }
+  .app-header-title span { color: var(--accent-sj); }
+  .header-badge {
+    font-size: 0.72rem;
+    background: color-mix(in srgb, var(--accent-sj) 20%, transparent);
+    color: var(--accent-sj);
+    border: 1px solid color-mix(in srgb, var(--accent-sj) 40%, transparent);
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .header-badge.zs-badge {
+    background: color-mix(in srgb, var(--accent-zs) 20%, transparent);
+    color: var(--accent-zs);
+    border-color: color-mix(in srgb, var(--accent-zs) 40%, transparent);
+  }
+
+  .sj-body {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+  .section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .count-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .count-btn {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 0.04em;
+    padding: 20px 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .count-btn small {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .count-btn:active { transform: scale(0.94); }
+  .count-btn.selected {
+    border-color: var(--accent-sj);
+    background: color-mix(in srgb, var(--accent-sj) 15%, var(--surface));
+    color: var(--accent-sj);
+  }
+  .count-btn.selected small { color: color-mix(in srgb, var(--accent-sj) 70%, white); }
+
+  .count-custom {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .count-custom input {
+    width: 80px;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.04em;
+  }
+  .count-custom-label { color: var(--muted); font-size: 0.85rem; }
+
+  .msg-area {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 14px;
+    width: 100%;
+    resize: none;
+    outline: none;
+    min-height: 80px;
+    transition: border-color 0.2s;
+  }
+  .msg-area:focus { border-color: var(--accent-sj); }
+  .msg-area::placeholder { color: var(--muted); }
+
+  .send-btn {
+    background: var(--accent-sj);
+    border: none;
+    border-radius: 14px;
+    color: #000;
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.08em;
+    padding: 20px;
+    width: 100%;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .send-btn:active { transform: scale(0.97); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .send-btn.sent {
+    background: var(--success);
+    animation: pulse-sent 0.5s ease;
+  }
+  @keyframes pulse-sent {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .history-item {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .history-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    color: var(--accent-sj);
+    min-width: 28px;
+  }
+
+  /* ── ZŠ SCREEN ── */
+  #screen-zs {
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .zs-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+    text-align: center;
+  }
+  .zs-waiting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .zs-waiting-icon {
+    font-size: 3.5rem;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .zs-waiting-text {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 240px;
+    line-height: 1.5;
+  }
+  .pulse-ring {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .zs-alert {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: alert-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes alert-in {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .zs-alert.visible { display: flex; }
+
+  .zs-count-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 8rem;
+    line-height: 1;
+    color: var(--accent-zs);
+    text-shadow: 0 0 60px color-mix(in srgb, var(--accent-zs) 50%, transparent);
+    letter-spacing: -0.02em;
+  }
+  .zs-count-label {
+    font-size: 1.1rem;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .zs-msg-box {
+    background: color-mix(in srgb, var(--accent-zs) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent-zs) 35%, transparent);
+    border-radius: 12px;
+    padding: 14px 18px;
+    max-width: 300px;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.5;
+    display: none;
+  }
+  .zs-msg-box.visible { display: block; }
+  .zs-time {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .zs-dismiss-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 12px 24px;
+    transition: all 0.15s;
+    margin-top: 4px;
+  }
+  .zs-dismiss-btn:active { transform: scale(0.97); }
+
+  .zs-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.error { background: var(--danger); }
+
+  /* ── FLASH OVERLAY ── */
+  .flash-overlay {
+    position: fixed; inset: 0;
+    background: color-mix(in srgb, var(--accent-zs) 30%, transparent);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 999;
+    transition: opacity 0.1s;
+  }
+  .flash-overlay.flash {
+    animation: screen-flash 0.6s ease;
+  }
+  @keyframes screen-flash {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .back-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 6px 12px;
+    transition: all 0.15s;
+  }
+  .back-btn:active { transform: scale(0.95); }
+
+  /* ── WALKIE TALKIE PTT ── */
+  .ptt-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .ptt-btn {
+    width: 100%;
+    background: #1e2130;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .ptt-btn.active {
+    background: #7f1d1d;
+    border-color: #ef4444;
+    color: #fca5a5;
+    transform: scale(0.98);
+    box-shadow: 0 0 28px rgba(239,68,68,0.35);
+  }
+  .ptt-btn.other-talking {
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .ptt-status {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.05em;
+    min-height: 14px;
+  }
+  .ptt-status.on-air { color: #ef4444; font-weight: 700; animation: blink 1s infinite; }
+  .ptt-status.other-on { color: var(--success); font-weight: 700; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── ZŠ → ŠJ SPRÁVY ── */
+  .zs-send-panel {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .zs-send-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .zs-send-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .zs-send-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    outline: none;
+    resize: none;
+    min-height: 44px;
+    max-height: 100px;
+    transition: border-color 0.2s;
+  }
+  .zs-send-input:focus { border-color: var(--accent-zs); }
+  .zs-send-input::placeholder { color: var(--muted); }
+  .zs-send-btn {
+    background: var(--accent-zs);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    padding: 10px 16px;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .zs-send-btn:active { transform: scale(0.96); }
+  .zs-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .zs-send-btn.sent { background: var(--success); }
+
+  /* ── ŠJ príjem správ zo ZŠ ── */
+  .sj-inbox {
+    background: color-mix(in srgb, var(--accent-zs) 8%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent-zs) 30%, transparent);
+    border-radius: 14px;
+    padding: 16px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    animation: alert-in 0.3s ease;
+  }
+  .sj-inbox.visible { display: flex; }
+  .sj-inbox-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-zs);
+    font-weight: 700;
+  }
+  .sj-inbox-msg {
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .sj-inbox-time {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .sj-inbox-dismiss {
+    background: none;
+    border: 1px solid color-mix(in srgb, var(--accent-zs) 40%, transparent);
+    border-radius: 8px;
+    color: var(--accent-zs);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    align-self: flex-start;
+    transition: all 0.15s;
+  }
+  .sj-inbox-dismiss:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<!-- ══════════ HESLO SCREEN ══════════ -->
+<div class="screen active" id="screen-setup">
+  <div class="setup-logo">ŠJ Signál</div>
+  <div class="setup-sub">ZŠ s MŠ Višňové 446</div>
+
+  <div class="setup-card">
+    <h2>🔐 Prístup do aplikácie</h2>
+    <div>
+      <label>Heslo</label>
+      <input type="password" id="cfg-heslo" placeholder="Zadajte heslo..." autocomplete="off" onkeydown="if(event.key==='Enter') saveConfig()">
+    </div>
+    <div class="err-msg" id="setup-err"></div>
+    <button class="btn-primary" onclick="saveConfig()">VSTÚPIŤ →</button>
+  </div>
+</div>
+
+<!-- ══════════ ROLE SCREEN ══════════ -->
+<div class="screen" id="screen-role">
+  <div style="padding:20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:0.06em;">ŠJ <span style="color:var(--muted)">Signál</span></div>
+
+  </div>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:24px; gap:20px;">
+    <div class="role-title">Kto ste?</div>
+    <div class="role-subtitle">Vyberte svoju rolu na tomto zariadení</div>
+    <div class="role-cards">
+      <div class="role-card sj" onclick="chooseRole('sj')">
+        <div class="role-icon">🍽️</div>
+        <div class="role-name">Dozor v ŠJ</div>
+        <div class="role-desc">Odosiela signál – koľko žiakov môže prísť</div>
+      </div>
+      <div class="role-card zs" onclick="chooseRole('zs')">
+        <div class="role-icon">🏫</div>
+        <div class="role-name">Dozor v ZŠ</div>
+        <div class="role-desc">Prijíma signál a púšťa žiakov do ŠJ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ŠJ SCREEN ══════════ -->
+<div class="screen" id="screen-sj">
+  <div class="app-header">
+    <div class="app-header-title">Dozor <span>ŠJ</span></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="header-badge">Odosielač</div>
+      <button class="back-btn" onclick="showRole()">←</button>
+    </div>
+  </div>
+  <div class="sj-body">
+    <!-- INBOX zo ZŠ -->
+    <div class="sj-inbox" id="sj-inbox">
+      <div class="sj-inbox-title">📩 Správa od dozoru ZŠ</div>
+      <div class="sj-inbox-msg" id="sj-inbox-msg"></div>
+      <div class="sj-inbox-time" id="sj-inbox-time"></div>
+      <button class="sj-inbox-dismiss" onclick="dismissSJInbox()">✓ Prečítané</button>
+    </div>
+
+    <!-- COUNT BUTTONS -->
+    <div>
+      <div class="section-label">Koľko žiakov môže prísť?</div>
+      <div class="count-grid">
+        <button class="count-btn" onclick="selectCount(3)">3<small>žiaci</small></button>
+        <button class="count-btn" onclick="selectCount(5)">5<small>žiaci</small></button>
+        <button class="count-btn" onclick="selectCount(8)">8<small>žiakov</small></button>
+        <button class="count-btn" onclick="selectCount(10)">10<small>žiakov</small></button>
+        <button class="count-btn" onclick="selectCount(15)">15<small>žiakov</small></button>
+        <button class="count-btn" onclick="selectCount(20)">20<small>žiakov</small></button>
+      </div>
+    </div>
+
+    <!-- CUSTOM COUNT -->
+    <div>
+      <div class="section-label">Alebo zadajte iný počet</div>
+      <div class="count-custom">
+        <input type="number" id="custom-count" min="1" max="99" placeholder="–" oninput="selectCustom(this.value)">
+        <span class="count-custom-label">žiakov</span>
+      </div>
+    </div>
+
+    <!-- MESSAGE -->
+    <div>
+      <div class="section-label">Správa (nepovinné)</div>
+      <textarea class="msg-area" id="sj-message" placeholder="Napr.: Počkajte 5 minút, umývame podlahu..." rows="3" maxlength="200" oninput="updateSendBtn()"></textarea>
+    </div>
+
+    <!-- SEND -->
+    <button class="send-btn" id="send-btn" onclick="sendSignal()" disabled>
+      <span id="send-icon">📡</span>
+      <span id="send-label">ODOSLAŤ SIGNÁL</span>
+    </button>
+
+    <!-- HISTORY -->
+    <div id="history-section" style="display:none;">
+      <div class="section-label">Posledné odosielania</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- PTT TLAČIDLO ŠJ -->
+  <div class="ptt-bar">
+    <div class="ptt-status" id="ptt-status-sj">Podržte tlačidlo pre hovor</div>
+    <button class="ptt-btn" id="ptt-btn-sj"
+      onmousedown="startPTT()" onmouseup="stopPTT()" onmouseleave="stopPTT()"
+      ontouchstart="startPTT(event)" ontouchend="stopPTT(event)">
+      🎙️ DRŽTE PRE HOVOR
+    </button>
+  </div>
+</div>
+
+<!-- ══════════ ZŠ SCREEN ══════════ -->
+<div class="screen" id="screen-zs">
+  <div class="app-header">
+    <div class="app-header-title">Dozor <span style="color:var(--accent-zs)">ZŠ</span></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="header-badge zs-badge">Prijímač</div>
+      <button class="back-btn" onclick="showRole()">←</button>
+    </div>
+  </div>
+
+  <div class="zs-main">
+    <!-- Waiting state -->
+    <div class="zs-waiting" id="zs-waiting">
+      <div class="zs-waiting-icon">⏳</div>
+      <div class="zs-waiting-text">Čakám na signál z jedálne...</div>
+      <div><span class="pulse-ring"></span></div>
+    </div>
+
+    <!-- Alert state -->
+    <div class="zs-alert" id="zs-alert">
+      <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; font-weight:700;">Môžete poslať</div>
+      <div class="zs-count-display" id="zs-count-num">–</div>
+      <div class="zs-count-label" id="zs-count-label">žiakov do ŠJ</div>
+      <div class="zs-msg-box" id="zs-msg-box"></div>
+      <div class="zs-time" id="zs-time"></div>
+      <button class="zs-dismiss-btn" onclick="dismissAlert()">✓ Beriem na vedomie</button>
+    </div>
+  </div>
+
+  <div class="zs-footer">
+    <div class="connection-status">
+      <div class="status-dot" id="conn-dot"></div>
+      <span id="conn-label">Pripájam sa...</span>
+    </div>
+  </div>
+
+  <!-- Odoslať správu do ŠJ -->
+  <div class="zs-send-panel">
+    <div class="zs-send-label">✉️ Napísať správu do ŠJ</div>
+    <div class="zs-send-row">
+      <textarea class="zs-send-input" id="zs-out-msg" placeholder="Napr.: Obed sa omeška o 10 min..." maxlength="200" rows="1" oninput="updateZSSendBtn()"></textarea>
+      <button class="zs-send-btn" id="zs-send-btn" onclick="sendZSMessage()" disabled>ODOSLAŤ</button>
+    </div>
+  </div>
+
+  <!-- PTT TLAČIDLO ZŠ -->
+  <div class="ptt-bar">
+    <div class="ptt-status" id="ptt-status-zs">Podržte tlačidlo pre hovor</div>
+    <button class="ptt-btn" id="ptt-btn-zs"
+      onmousedown="startPTT()" onmouseup="stopPTT()" onmouseleave="stopPTT()"
+      ontouchstart="startPTT(event)" ontouchend="stopPTT(event)">
+      🎙️ DRŽTE PRE HOVOR
+    </button>
+  </div>
+</div>
+
+<!-- Skrytý audio element pre príjem hlasu -->
+<audio id="remote-audio" autoplay playsinline></audio>
+
+<script>
+// ════════════════════════════════════
+//  STATE
+// ════════════════════════════════════
+let supabase = null;
+let selectedCount = null;
+let currentRole = null;
+let channel = null;
+let history = [];
+
+const TABLE = 'jedalen_signal';
+
+// ════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════
+const SUPABASE_URL = 'https://nhloasdtjbbwmobhvufh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obG9hc2R0amJid21vYmh2dWZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTM0OTAsImV4cCI6MjA4OTc2OTQ5MH0.IYggGJNOp5KpUezkLRXfhnCappcYdRBD0fQB_AUiOrU';
+const APP_PASSWORD = 'visna446';
+
+function saveConfig() {
+  const heslo = document.getElementById('cfg-heslo').value.trim();
+  const err = document.getElementById('setup-err');
+
+  if (heslo !== APP_PASSWORD) {
+    err.textContent = 'Nesprávne heslo';
+    document.getElementById('cfg-heslo').value = '';
+    return;
+  }
+
+  localStorage.setItem('sj_auth', '1');
+  initSupabase();
+  showRole();
+}
+
+function initSupabase() {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
+function loadConfig() {
+  if (localStorage.getItem('sj_auth') === '1') {
+    initSupabase();
+    return true;
+  }
+  return false;
+}
+
+// ════════════════════════════════════
+//  SCREEN NAVIGATION
+// ════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+function showSetup() {
+  if (channel) { channel.unsubscribe(); channel = null; }
+  showScreen('setup');
+}
+function showRole() {
+  if (channel) { channel.unsubscribe(); channel = null; }
+  showScreen('role');
+}
+function chooseRole(role) {
+  currentRole = role;
+  if (role === 'sj') {
+    showScreen('sj');
+    startListening();
+    setupSignaling();
+  } else {
+    showScreen('zs');
+    startListening();
+    setupSignaling();
+  }
+}
+
+// ════════════════════════════════════
+//  ŠJ — SENDING
+// ════════════════════════════════════
+function selectCount(n) {
+  selectedCount = n;
+  document.getElementById('custom-count').value = '';
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  updateSendBtn();
+}
+
+function selectCustom(val) {
+  const n = parseInt(val);
+  if (n > 0) {
+    selectedCount = n;
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+  } else {
+    selectedCount = null;
+  }
+  updateSendBtn();
+}
+
+function updateSendBtn() {
+  const msg = document.getElementById('sj-message').value.trim();
+  document.getElementById('send-btn').disabled = !selectedCount && !msg;
+}
+
+async function sendSignal() {
+  const msgCheck = document.getElementById('sj-message').value.trim();
+  if ((!selectedCount && !msgCheck) || !supabase) return;
+  const msg = document.getElementById('sj-message').value.trim();
+  const btn = document.getElementById('send-btn');
+  const icon = document.getElementById('send-icon');
+  const lbl = document.getElementById('send-label');
+
+  btn.disabled = true;
+  lbl.textContent = 'Odosielam...';
+  icon.textContent = '⏳';
+
+  try {
+    const { error } = await supabase.from(TABLE).insert({
+      count: selectedCount,
+      message: msg || null,
+      sender: 'sj',
+      sent_at: new Date().toISOString()
+    });
+
+    if (error) throw error;
+
+    // Success
+    btn.classList.add('sent');
+    icon.textContent = '✅';
+    lbl.textContent = 'ODOSLANÉ!';
+    addToHistory(selectedCount, msg);
+
+    setTimeout(() => {
+      btn.classList.remove('sent');
+      icon.textContent = '📡';
+      lbl.textContent = 'ODOSLAŤ SIGNÁL';
+      btn.disabled = false;
+    }, 2500);
+
+    // Reset
+    document.getElementById('sj-message').value = '';
+    document.getElementById('custom-count').value = '';
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+    selectedCount = null;
+
+  } catch(e) {
+    icon.textContent = '❌';
+    const errMsg = e.message || JSON.stringify(e) || 'Neznáma chyba';
+    lbl.textContent = 'CHYBA';
+    alert('Chyba odosielania:\n' + errMsg);
+    btn.disabled = false;
+    setTimeout(() => {
+      icon.textContent = '📡';
+      lbl.textContent = 'ODOSLAŤ SIGNÁL';
+    }, 3000);
+    console.error(e);
+  }
+}
+
+function addToHistory(count, msg) {
+  const now = new Date();
+  const time = now.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+  history.unshift({ count, msg, time });
+  if (history.length > 5) history.pop();
+
+  const sec = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  sec.style.display = 'block';
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span class="history-count">${h.count}</span>
+      <span>${h.msg ? '· ' + h.msg.substring(0, 50) : '(bez správy)'}</span>
+      <span style="margin-left:auto; font-size:0.75rem;">${h.time}</span>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════
+//  ZŠ — SENDING MESSAGE TO ŠJ
+// ════════════════════════════════════
+function updateZSSendBtn() {
+  const msg = document.getElementById('zs-out-msg').value.trim();
+  document.getElementById('zs-send-btn').disabled = !msg;
+}
+
+async function sendZSMessage() {
+  const msg = document.getElementById('zs-out-msg').value.trim();
+  if (!msg || !supabase) return;
+  const btn = document.getElementById('zs-send-btn');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    const { error } = await supabase.from(TABLE).insert({
+      count: null,
+      message: msg,
+      sender: 'zs',
+      sent_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    btn.classList.add('sent');
+    btn.textContent = '✓';
+    document.getElementById('zs-out-msg').value = '';
+    setTimeout(() => {
+      btn.classList.remove('sent');
+      btn.textContent = 'ODOSLAŤ';
+    }, 2500);
+  } catch(e) {
+    btn.textContent = '❌';
+    alert('Chyba: ' + (e.message || e));
+    setTimeout(() => { btn.textContent = 'ODOSLAŤ'; btn.disabled = false; }, 2000);
+  }
+}
+
+// ════════════════════════════════════
+//  ŠJ — INBOX (správy zo ZŠ)
+// ════════════════════════════════════
+function showSJInbox(data) {
+  const time = new Date(data.sent_at || Date.now());
+  const timeStr = time.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('sj-inbox-msg').textContent = data.message;
+  document.getElementById('sj-inbox-time').textContent = 'Prijaté o ' + timeStr;
+  document.getElementById('sj-inbox').classList.add('visible');
+  playAlert();
+  const flash = document.getElementById('flashOverlay');
+  flash.classList.remove('flash');
+  void flash.offsetWidth;
+  flash.classList.add('flash');
+}
+
+function dismissSJInbox() {
+  document.getElementById('sj-inbox').classList.remove('visible');
+}
+
+// ════════════════════════════════════
+//  ZŠ — RECEIVING
+// ════════════════════════════════════
+function startListening() {
+  if (!supabase) return;
+  setConnectionStatus('connecting');
+
+  channel = supabase
+    .channel('jedalen-realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: TABLE
+    }, async (payload) => {
+      const id = payload.new?.id;
+      let data = payload.new;
+      if (id) {
+        const { data: fetched } = await supabase.from(TABLE).select('*').eq('id', id).single();
+        if (fetched) data = fetched;
+      }
+      // Označ ako videné – polling to už nezobrazí
+      if (data.id && data.id > lastSeenId) lastSeenId = data.id;
+      const sender = data.sender || 'sj';
+      if (currentRole === 'zs' && sender === 'sj') {
+        showAlert(data);
+      } else if (currentRole === 'sj' && sender === 'zs') {
+        showSJInbox(data);
+      }
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') setConnectionStatus('connected');
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setConnectionStatus('error');
+    });
+}
+
+function setConnectionStatus(st) {
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'status-dot';
+  if (st === 'connected') {
+    dot.classList.add('connected');
+    lbl.textContent = 'Pripojený – čakám na signál';
+  } else if (st === 'error') {
+    dot.classList.add('error');
+    lbl.textContent = 'Chyba pripojenia – skontrolujte internet';
+  } else {
+    lbl.textContent = 'Pripájam sa...';
+  }
+}
+
+function showAlert(data) {
+  const count = data.count;
+  const msg = data.message;
+  const time = new Date(data.sent_at || Date.now());
+  const timeStr = time.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+
+  document.getElementById('zs-waiting').style.display = 'none';
+  const alertEl = document.getElementById('zs-alert');
+  alertEl.classList.add('visible');
+
+  if (count) {
+    document.getElementById('zs-count-num').textContent = count;
+    document.getElementById('zs-count-label').textContent =
+      count === 1 ? 'žiak do ŠJ' : count < 5 ? 'žiaci do ŠJ' : 'žiakov do ŠJ';
+    document.getElementById('zs-count-num').style.display = 'block';
+    document.getElementById('zs-count-label').style.display = 'block';
+    document.querySelector('#zs-alert div:first-child').textContent = 'Môžete poslať';
+  } else {
+    document.getElementById('zs-count-num').style.display = 'none';
+    document.getElementById('zs-count-label').style.display = 'none';
+    document.querySelector('#zs-alert div:first-child').textContent = 'Správa z ŠJ';
+  }
+
+  document.getElementById('zs-time').textContent = 'Odoslané o ' + timeStr;
+
+  const msgBox = document.getElementById('zs-msg-box');
+  if (msg) {
+    msgBox.textContent = '💬 ' + msg;
+    msgBox.classList.add('visible');
+  } else {
+    msgBox.classList.remove('visible');
+  }
+
+  const flash = document.getElementById('flashOverlay');
+  flash.classList.remove('flash');
+  void flash.offsetWidth;
+  flash.classList.add('flash');
+
+  playAlert();
+}
+
+function dismissAlert() {
+  document.getElementById('zs-alert').classList.remove('visible');
+  document.getElementById('zs-waiting').style.display = 'flex';
+}
+
+function playAlert() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784]; // C5, E5, G5
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.4, start + 0.05);
+      gain.gain.linearRampToValueAtTime(0, start + 0.3);
+      osc.start(start);
+      osc.stop(start + 0.35);
+    });
+  } catch(e) { /* audio not available */ }
+}
+
+// ════════════════════════════════════
+//  WALKIE TALKIE – WebRTC
+// ════════════════════════════════════
+let peerConnection = null;
+let localStream = null;
+let signalingChannel = null;
+let isPTTActive = false;
+let isOfferer = false;
+let rtcReady = false;
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+function setupSignaling() {
+  if (!supabase) return;
+  signalingChannel = supabase.channel('wt-signal-v1', {
+    config: { broadcast: { self: false }, presence: { key: currentRole } }
+  });
+
+  signalingChannel
+    .on('broadcast', { event: 'offer' }, async ({ payload }) => {
+      if (payload.to !== currentRole) return;
+      await handleOffer(payload.sdp);
+    })
+    .on('broadcast', { event: 'answer' }, async ({ payload }) => {
+      if (payload.to !== currentRole) return;
+      await handleAnswer(payload.sdp);
+    })
+    .on('broadcast', { event: 'ice' }, async ({ payload }) => {
+      if (payload.to !== currentRole) return;
+      await handleIce(payload.candidate);
+    })
+    .on('broadcast', { event: 'ptt_on' }, ({ payload }) => {
+      if (payload.role !== currentRole) showOtherTalking(true);
+    })
+    .on('broadcast', { event: 'ptt_off' }, ({ payload }) => {
+      if (payload.role !== currentRole) showOtherTalking(false);
+    })
+    .subscribe();
+}
+
+function otherRole() {
+  return currentRole === 'sj' ? 'zs' : 'sj';
+}
+
+async function getMic() {
+  if (localStream) return true;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    localStream.getAudioTracks().forEach(t => t.enabled = false);
+    return true;
+  } catch(e) {
+    alert('Nemôžem získať mikrofón.\n' + e.message + '\n\nSkontrolujte povolenia prehliadača.');
+    return false;
+  }
+}
+
+async function initPC() {
+  if (peerConnection) { try { peerConnection.close(); } catch(e) {} }
+  peerConnection = new RTCPeerConnection(ICE_SERVERS);
+  rtcReady = false;
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+  }
+
+  peerConnection.ontrack = (e) => {
+    const audio = document.getElementById('remote-audio');
+    if (audio.srcObject !== e.streams[0]) {
+      audio.srcObject = e.streams[0];
+      audio.play().catch(() => {});
+    }
+    rtcReady = true;
+  };
+
+  peerConnection.onicecandidate = (e) => {
+    if (e.candidate && signalingChannel) {
+      signalingChannel.send({
+        type: 'broadcast', event: 'ice',
+        payload: { to: otherRole(), candidate: e.candidate }
+      });
+    }
+  };
+
+  peerConnection.onconnectionstatechange = () => {
+    const s = peerConnection.connectionState;
+    rtcReady = (s === 'connected');
+    if (s === 'failed' || s === 'disconnected') {
+      rtcReady = false;
+      peerConnection.close();
+      peerConnection = null;
+    }
+  };
+}
+
+async function createOffer() {
+  await initPC();
+  const offer = await peerConnection.createOffer({ offerToReceiveAudio: true });
+  await peerConnection.setLocalDescription(offer);
+  signalingChannel.send({
+    type: 'broadcast', event: 'offer',
+    payload: { to: otherRole(), sdp: peerConnection.localDescription }
+  });
+}
+
+async function handleOffer(sdp) {
+  const ok = await getMic();
+  if (!ok) return;
+  await initPC();
+  localStream.getTracks().forEach(t => {
+    if (!peerConnection.getSenders().find(s => s.track === t)) {
+      peerConnection.addTrack(t, localStream);
+    }
+  });
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  signalingChannel.send({
+    type: 'broadcast', event: 'answer',
+    payload: { to: otherRole(), sdp: peerConnection.localDescription }
+  });
+  rtcReady = true;
+}
+
+async function handleAnswer(sdp) {
+  if (peerConnection && peerConnection.signalingState !== 'closed') {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+    rtcReady = true;
+  }
+}
+
+async function handleIce(candidate) {
+  if (peerConnection && candidate) {
+    try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
+  }
+}
+
+async function startPTT(e) {
+  if (e) e.preventDefault();
+  if (isPTTActive) return;
+
+  const ok = await getMic();
+  if (!ok) return;
+
+  isPTTActive = true;
+  localStream.getAudioTracks().forEach(t => t.enabled = true);
+  updatePTTUI(true);
+
+  signalingChannel.send({
+    type: 'broadcast', event: 'ptt_on',
+    payload: { role: currentRole }
+  });
+
+  // Ak nie je spojenie, iniciuj
+  if (!peerConnection || peerConnection.connectionState === 'closed' ||
+      peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'new') {
+    isOfferer = true;
+    await createOffer();
+  }
+}
+
+function stopPTT(e) {
+  if (e) e.preventDefault();
+  if (!isPTTActive) return;
+  isPTTActive = false;
+
+  if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+  updatePTTUI(false);
+
+  signalingChannel.send({
+    type: 'broadcast', event: 'ptt_off',
+    payload: { role: currentRole }
+  });
+}
+
+function updatePTTUI(active) {
+  const btnId = currentRole === 'sj' ? 'ptt-btn-sj' : 'ptt-btn-zs';
+  const statusId = currentRole === 'sj' ? 'ptt-status-sj' : 'ptt-status-zs';
+  const btn = document.getElementById(btnId);
+  const status = document.getElementById(statusId);
+  if (!btn) return;
+  if (active) {
+    btn.classList.add('active');
+    btn.textContent = '🔴 HOVORÍTE...';
+    if (status) { status.textContent = '● NA VZDUCHU'; status.className = 'ptt-status on-air'; }
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = '🎙️ DRŽTE PRE HOVOR';
+    if (status) { status.textContent = 'Podržte tlačidlo pre hovor'; status.className = 'ptt-status'; }
+  }
+}
+
+function showOtherTalking(talking) {
+  const btnId = currentRole === 'sj' ? 'ptt-btn-sj' : 'ptt-btn-zs';
+  const statusId = currentRole === 'sj' ? 'ptt-status-sj' : 'ptt-status-zs';
+  const btn = document.getElementById(btnId);
+  const status = document.getElementById(statusId);
+  if (!btn || isPTTActive) return;
+  if (talking) {
+    btn.classList.add('other-talking');
+    btn.textContent = '🔊 DRUHÝ HOVORÍ...';
+    if (status) { status.textContent = '● Príjem'; status.className = 'ptt-status other-on'; }
+  } else {
+    btn.classList.remove('other-talking');
+    btn.innerHTML = '🎙️ DRŽTE PRE HOVOR';
+    if (status) { status.textContent = 'Podržte tlačidlo pre hovor'; status.className = 'ptt-status'; }
+  }
+}
+
+// ════════════════════════════════════
+//  WAKE LOCK – zabraňuje stmavnutiu
+// ════════════════════════════════════
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    console.log('Wake Lock aktívny');
+    wakeLock.addEventListener('release', () => {
+      console.log('Wake Lock uvoľnený');
+    });
+  } catch(e) {
+    console.warn('Wake Lock nedostupný:', e.message);
+  }
+}
+
+// Znovu aktivuj Wake Lock po návrate na stránku
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') {
+    await requestWakeLock();
+    // Obnov realtime spojenie ak bolo prerušené
+    if (currentRole && channel) {
+      const state = channel.state;
+      if (state !== 'joined' && state !== 'joining') {
+        channel.unsubscribe();
+        channel = null;
+        startListening();
+      }
+    }
+    // Skontroluj záložne či neprišla správa počas spánku
+    if (currentRole) pollMissedMessages();
+  }
+});
+
+// ════════════════════════════════════
+//  ZÁLOŽNÉ POLLENIE (každých 10s)
+// ════════════════════════════════════
+let lastSeenId = 0;
+let pollInterval = null;
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  // Zisti aktuálne najvyššie ID aby sme nezobrazili staré správy
+  supabase.from(TABLE).select('id').order('id', { ascending: false }).limit(1)
+    .then(({ data }) => { if (data && data[0]) lastSeenId = data[0].id; });
+  pollInterval = setInterval(pollMissedMessages, 10000);
+}
+
+async function pollMissedMessages() {
+  if (!supabase || !currentRole) return;
+  try {
+    const senderFilter = currentRole === 'zs' ? 'sj' : 'zs';
+    let query = supabase
+      .from(TABLE)
+      .select('*')
+      .eq('sender', senderFilter)
+      .order('id', { ascending: false })
+      .limit(1);
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return;
+
+    const latest = data[0];
+    if (latest.id > lastSeenId) {
+      lastSeenId = latest.id;
+      // Skontroluj či nie je staršia ako 2 minúty
+      const age = Date.now() - new Date(latest.sent_at).getTime();
+      if (age < 120000) {
+        if (currentRole === 'zs') showAlert(latest);
+        else showSJInbox(latest);
+      }
+    }
+  } catch(e) { /* ticho pri chybe pollovania */ }
+}
+
+// ════════════════════════════════════
+//  INIT
+// ════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (loadConfig()) {
+    showRole();
+  }
+});
+
+// Spusti Wake Lock a polling po výbere roly
+const _origStartListening = startListening;
+startListening = function() {
+  _origStartListening();
+  requestWakeLock();
+  startPolling();
+};
+</script>
+</body>
+</html>
