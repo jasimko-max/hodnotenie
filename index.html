@@ -232,6 +232,7 @@ tr:hover td{background:#FAFBFF}
       <div class="fg"><label class="flbl">URL Google Apps Script Web App</label>
         <input class="fc" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" type="url"></div>
       <button class="mbtn-big" id="connectBtn" onclick="connectSheets()">Pripojiť a inicializovať →</button>
+      <div id="errBox" style="display:none;margin-top:12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px;font-size:12px;color:#991B1B;line-height:1.6"></div>
       <div style="margin-top:12px;font-size:12px;color:var(--tx3);text-align:center">Dáta sa uložia do Google Sheets vášho účtu. Zadarmo, žiadna databáza.</div>
     </div>
 
@@ -403,7 +404,12 @@ async function connectSheets() {
     showLoginStep();
     toast('Spojenie úspešné! Databáza inicializovaná.','ok');
   } catch(e) {
-    toast('Chyba: ' + e.message,'err');
+    let msg = e.message || 'Neznáma chyba';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      msg = 'Nedá sa pripojiť. Overte: (1) URL je správna, (2) pri nasadení ste zvolili prístup "Ktokoľvek", (3) autorizovali ste skript kliknutím "Povoliť prístup".';
+    }
+    document.getElementById('errBox').textContent = '⚠ ' + msg;
+    document.getElementById('errBox').style.display = 'block';
   } finally { btn.disabled = false; btn.textContent = 'Pripojiť a inicializovať →'; }
 }
 
@@ -461,18 +467,21 @@ function logout() {
 async function apiGet(action, url) {
   url = url || API_URL;
   const u = action ? `${url}?action=${action}` : url;
-  const r = await fetch(u);
+  const r = await fetch(u, { redirect: 'follow' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
   if (!j.ok) throw new Error(j.error || 'Neznáma chyba');
   return j.data;
 }
 
 async function apiPost(action, payload) {
+  // Bez Content-Type hlavičky = žiaden CORS preflight, GAS číta telo cez e.postData.contents
   const r = await fetch(API_URL, {
-    method: 'POST', redirect: 'follow',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    redirect: 'follow',
     body: JSON.stringify({ action, ...payload })
   });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
   if (!j.ok) throw new Error(j.error || 'Neznáma chyba');
   return j.result;
