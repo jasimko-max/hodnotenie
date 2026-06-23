@@ -133,7 +133,7 @@ Napíš IBA text hodnotenia, bez úvodu ani vysvetlení.`;
       const res = await fetch(WORKER_URL, {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200, messages:[{ role:"user", content:prompt }] })
+        body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1200, messages:[{ role:"user", content:prompt }] })
       });
       const data = await res.json();
       if (data.error) { setError("Chyba API: " + data.error.message); setLoading(false); return; }
